@@ -40,6 +40,7 @@ namespace C2
                 {
                     SendNum();
                 }
+
             }
             
         }
@@ -70,20 +71,15 @@ namespace C2
 
         public void SendNum()
         {
-            Random _random = new Random();
-
-
             Random r = new Random();
 
             byte[] buffer = Guid.NewGuid().ToByteArray();
             int iSeed = BitConverter.ToInt32(buffer, 0);
             r = new Random(iSeed);
-            int x;
-            x = r.Next(1000);
-
-
-
-            SendClientMessage(sname+"+"+x.ToString());
+            int x = r.Next(1000);
+            Console.WriteLine("{0}", x);
+            
+            SendClientMessage(sname + "+" + x.ToString());
         }
 
         public void SendClientMessage(string smessage)

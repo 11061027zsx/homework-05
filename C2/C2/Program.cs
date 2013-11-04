@@ -18,8 +18,17 @@ namespace C2
 
 
             client[] a =new client[20];
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 10; i++)
             {
+                a[i] = new client { sname = "c-" + i.ToString(), scode = "123" };
+                a[i].connnectserver();
+                a[i].Sign_Receive();
+                a[i].Regester();
+            }
+
+            for (int i = 10; i < 20; i++)
+            {
+                Thread.Sleep(1000);
                 a[i] = new client { sname = "c-" + i.ToString(), scode = "123" };
                 a[i].connnectserver();
                 a[i].Sign_Receive();

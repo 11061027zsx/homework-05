@@ -15,9 +15,13 @@ namespace C1
     {
         public string Mname { get; set; }
         public string Mcode { get; set; }
-        public double Mnum { get; set; }
+        public int Mnum { get; set; }
         public bool IsSendNum { get; set; }
         public Socket client { get; set; }
+        public int Mpoint { get; set; }
+        public int MNJoinGame { get; set; }
+        public int MNWin { get; set; }
+        public int MNlose { get; set; }
     }
 
     class NumSeryer
@@ -30,6 +34,9 @@ namespace C1
 
 
         public static int Nround=40;
+        public static int NGetPoint = 10;
+        public static int NotInTime = 5;
+        public static int NLosePoint = 1;
 
         private static byte[] result = new byte[1024];
         private static int myProt = 8885;   //端口
@@ -43,6 +50,8 @@ namespace C1
             serverSocket.Bind(new IPEndPoint(ip, myProt));  //绑定IP地址：端口
             serverSocket.Listen(50);    
             Console.WriteLine("启动监听{0}成功", serverSocket.LocalEndPoint.ToString());
+            Thread.Sleep(1000);
+            Console.WriteLine("等待客户端连接....");
             //通过Clientsoket发送数据
 
             Thread myThread = new Thread(ListenClientConnect);
@@ -57,22 +66,41 @@ namespace C1
 
 
 
+
         public static void sendstart()
         {
+            Console.WriteLine();
+            Console.WriteLine("所有客户端均已经连接到服务器，游戏将在3秒后开始");
+            for (int i = 3; i >= 1; i--)
+            {
+                Thread.Sleep(1 * 1000);
+                Console.WriteLine("游戏将在{0}秒后开始", i);
+            }
 
+            Thread.Sleep(1 * 1000);
+            Console.WriteLine("游戏开始");
+            Console.WriteLine();
             for (int i = 0; i < Nround; i++)
             {
+                foreach (ClientData xx in ClientList)
+                {
+                    xx.IsSendNum = false;
+                }
                 sendmessage();
-                Thread.Sleep(1200);
 
-                double sum = 0, ave, jiange = 1111111111;
-                int n = 0, pos = 0;
+                Thread.Sleep(1000);
+
+                double sum = 0, ave, min, max;
+                int n = 0;
+
+                double[] dis = new double[100];
 
                 foreach (ClientData xx in ClientList)
                 {
                     if (xx.IsSendNum)
                     {
                         sum += xx.Mnum;
+                        xx.MNJoinGame++;
                         n++;
                     }
                 }
@@ -83,16 +111,75 @@ namespace C1
                 for (int j = 0; j < ClientList.Count; j++)
                 {
                     ClientData xx = ClientList[j];
-                    if (xx.IsSendNum && jiange > Math.Abs(xx.Mnum - ave))
+                    dis[j] = Math.Abs(xx.Mnum - ave);
+                }
+
+                max = min = dis[0];
+
+                for (int j = 1; j < ClientList.Count; j++)
+                {
+                    if (max < dis[j]) max = dis[j];
+                    if (min > dis[j]) min = dis[j];
+                }
+
+                List<int> ThisRoundResultVE = new List<int>();
+                List<int> ThisRoundResultLOSE = new List<int>();
+                ThisRoundResultVE.Clear();
+                ThisRoundResultLOSE.Clear();
+              
+                for (int j = 0; j < ClientList.Count; j++)
+                {
+                    if (dis[j] == max)
                     {
-                        jiange = Math.Abs(xx.Mnum - ave); pos = j;
+                        ThisRoundResultLOSE.Add(j);
+                        ClientList[j].Mpoint -= NLosePoint;
+                        ClientList[j].MNlose++;
                     }
+                    if (dis[j] == min)
+                    {
+                        ThisRoundResultVE.Add(j);
+                        ClientList[j].Mpoint += NGetPoint;
+                        ClientList[j].MNWin++;
+                    }
+                }
+                foreach(ClientData xx in ClientList)
+                {
+                    if(!xx.IsSendNum) xx.Mpoint-=NotInTime;
                 }
 
                 Console.WriteLine("第{0}轮结果", i);
                 Console.WriteLine("参与客户端数：{0}，G-number：{1}", n, ave);
-                Console.WriteLine("获胜客户端名字:{0},数值：{1}", ClientList[pos].Mname, ClientList[pos].Mnum);
+                Console.WriteLine("最优预估" + (char)9 + "数值");
+                for (int j = 0; j < ThisRoundResultVE.Count; j++)
+                    Console.WriteLine("{0}" + (char)9 + (char)9 + "{1}", ClientList[ThisRoundResultVE[j]].Mname, ClientList[ThisRoundResultVE[j]].Mnum);
+
+                Console.WriteLine("最差预估" + (char)9 + "数值");
+                for (int j = 0; j < ThisRoundResultLOSE.Count; j++)
+                    Console.WriteLine("{0}" + (char)9 + (char)9 + "{1}", ClientList[ThisRoundResultLOSE[j]].Mname, ClientList[ThisRoundResultLOSE[j]].Mnum);
                 Console.WriteLine();
+
+
+            }
+
+            Thread.Sleep(1000);
+            Console.WriteLine("游戏结束，下面给出游戏结果");
+            Thread.Sleep(1000);
+            Console.WriteLine("名次" + (char)9 + "名字" + (char)9 + "总分" + (char)9 + "参与次数" + (char)9 + "获胜次数" + (char)9 + "失败次数");
+
+            ClientList = ClientList.OrderByDescending(x => x.Mpoint).ToList<ClientData>();
+
+            int nkey=0,nt=1,f=-5*100;
+
+            for (int i = 0; i < ClientList.Count; i++)
+            {
+                if (f != ClientList[i].Mpoint)
+                {
+                    nkey += nt;
+                    nt = 1;
+                    f = ClientList[i].Mpoint;
+                }
+                else nt++;
+                Console.WriteLine("{0}" + (char)9 + "{1}" + (char)9 + "{2}" + (char)9 + "{3}" + (char)9 + (char)9  +"{4}" + (char)9 + (char)9 + "{5}", nkey, ClientList[i].Mname, ClientList[i].Mpoint, ClientList[i].MNJoinGame, ClientList[i].MNWin, ClientList[i].MNlose);
             }
         }
 
@@ -153,7 +240,7 @@ namespace C1
                     string[] s = ss.Trim().Split('+');
 
 
-                    double tnum = 0;
+                    int tnum = 0;
 
                     if (s[0] == "Regester")
                     {
@@ -161,16 +248,23 @@ namespace C1
                         int index = int.Parse(stemp[1]);
                         ClientList[index].Mname = s[1];
                         ClientList[index].Mcode = s[2];
+                        Console.WriteLine("客户端{0}已连入", s[1]);
                         continue;
                     }
 
 
-
                     string tname = s[0];
-                    tnum = int.Parse(s[1]);
+                    try
+                    {
+                        tnum = int.Parse(s[1]);
+
+                    }
+                    catch
+                    {
+                        continue;
+                    } 
+
                     int n = ClientList.FindIndex(x => x.Mname == s[0]);
-
-
                     ClientList[n].Mnum = tnum;
                     ClientList[n].IsSendNum = true;
                 }
